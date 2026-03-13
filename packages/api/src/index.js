@@ -103,7 +103,7 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════╗
-║   ChainCodec API   →  :${PORT}                        ║
+║   ChainMerge API   →  :${PORT}                        ║
 ║   Rust Engine      →  :${process.env.RUST_SERVER_PORT || 3001}                        ║
 ║   Live chains      →  ${LIVE_CHAINS.join(', ')}  ║
 ║   Simulated        →  ${SIMULATED_CHAINS.join(', ')}    ║
