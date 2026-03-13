@@ -45,7 +45,7 @@ async fn main() {
         .route("/decode", get(decode_transaction))
         .layer(cors);
 
-    info!("ChainCodec Rust engine starting on {}", addr);
+    info!("ChainMerge Rust engine starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -54,7 +54,7 @@ async fn main() {
 async fn health_check() -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "status": "ok",
-        "engine": "ChainCodec Lite",
+        "engine": "ChainMerge Lite",
         "version": "0.1.0",
         "supported_chains": ["ethereum", "solana"]
     }))
@@ -122,7 +122,13 @@ async fn decode_transaction(
 fn get_rpc_url(chain: &str) -> Option<String> {
     match chain.to_lowercase().as_str() {
         "ethereum" | "eth" => env::var("ETH_RPC_URL").ok(),
-        "solana" | "sol" => env::var("SOL_RPC_URL").ok(),
+        "solana" | "sol"   => env::var("SOL_RPC_URL").ok(),
+        "cosmos" | "atom"  => env::var("COSMOS_RPC_URL").ok(),
+        "aptos" | "apt"    => env::var("APTOS_RPC_URL").ok(),
+        // Tier 2 simulated chains don't need real RPC
+        "sui" | "polkadot" | "dot" | "bitcoin" | "btc" | "starknet" | "strk" => {
+            Some("simulated".to_string())
+        }
         _ => None,
     }
 }
