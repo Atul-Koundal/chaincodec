@@ -1,10 +1,10 @@
 [package]
-name = "chaincodec-core"
+name = "chainmerge-core"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "chaincodec"
+name = "chainmerge"
 path = "src/main.rs"
 
 [dependencies]

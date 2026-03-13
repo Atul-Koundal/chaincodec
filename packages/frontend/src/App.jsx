@@ -1,199 +1,94 @@
-import { useState } from "react";
-import ChainSelector from "./components/ChainSelector";
-import HashInput from "./components/HashInput";
-import OutputViewer from "./components/OutputViewer";
-import "./index.css";
+import { useState } from 'react';
+import DecoderPage  from './pages/DecoderPage';
+import ChainViewPage from './pages/ChainViewPage';
+import ChainIndexPage from './pages/ChainIndexPage';
+import DocsPage      from './pages/DocsPage';
+import './index.css';
 
-const SAMPLE_TRANSACTIONS = {
-  ethereum: [
-    {
-      label: "Multi Transfer",
-      hash: "0x9e621f6080ff42ab706d6a5adcdd08fadbc6ed25bf78b26757bddc2cc1d6a8a9"
-    },
-  ],
-  solana: [
-    {
-      label: "SOL Transfer",
-      hash: "5ZvGTsHXtMaGGpJeUUqQcGi6ZvEVcxH7vZoKFbnDuJYFtCaKDeSKmAg2qB1CZcK"
-    },
-  ],
-};
+const NAV_ITEMS = [
+  { id: 'decoder',    icon: '⬡', label: 'DECODER',    tag: null },
+  { id: 'chainview',  icon: '◈', label: 'CHAINVIEW',  tag: null },
+  { id: 'chainindex', icon: '⊛', label: 'CHAININDEX', tag: 'NEW' },
+  { id: 'docs',       icon: '//','label': 'DOCS',      tag: null },
+];
+
+const CHAIN_PILLS = [
+  { label: 'ETH', bg: 'rgba(98,126,234,0.15)',  color: '#627EEA', border: 'rgba(98,126,234,0.3)' },
+  { label: 'SOL', bg: 'rgba(153,69,255,0.15)',  color: '#9945FF', border: 'rgba(153,69,255,0.3)' },
+  { label: 'ATOM',bg: 'rgba(111,115,144,0.15)', color: '#8b8fa8', border: 'rgba(111,115,144,0.3)' },
+  { label: 'APT', bg: 'rgba(0,212,170,0.15)',   color: '#00D4AA', border: 'rgba(0,212,170,0.3)'  },
+];
 
 export default function App() {
-  const [chain, setChain] = useState("ethereum");
-  const [hash, setHash] = useState("");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [decoded, setDecoded] = useState(false);
-
-  const handleDecode = async () => {
-    if (!hash.trim()) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setDecoded(false);
-
-    try {
-      const res = await fetch(
-        `/api/decode?chain=${chain}&hash=${encodeURIComponent(hash.trim())}`
-      );
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Unknown error");
-      } else {
-        setResult(data);
-        setDecoded(true);
-      }
-    } catch (e) {
-      setError("Could not reach the API. Is the backend running?");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSample = (sample) => {
-    setHash(sample.hash);
-    setResult(null);
-    setError(null);
-    setDecoded(false);
-  };
+  const [page, setPage] = useState('decoder');
 
   return (
     <div className="app">
       <div className="grid-bg" />
 
-      {/* Header */}
-      <header className="header">
-        <div className="header-inner">
-          <div className="logo-group">
-            <span className="logo-icon">⬡</span>
-            <span className="logo-text">
-              Chain<span className="logo-accent">Codec</span>
-            </span>
-            <span className="logo-badge">LITE</span>
-          </div>
-          <p className="tagline">Universal Multichain Transaction Decoder</p>
+      {/* ── Navbar ── */}
+      <nav className="navbar">
+        {/* Brand */}
+        <div className="nav-brand">
+          <span className="nav-logo-icon">⬡</span>
+          <span className="nav-logo-text">
+            Chain<span className="nav-logo-accent">Codec</span>
+          </span>
+          <span className="nav-logo-badge">BETA</span>
         </div>
-        <div className="chain-pills">
-          <span className="pill pill-eth">ETH</span>
-          <span className="pill-sep">+</span>
-          <span className="pill pill-sol">SOL</span>
-        </div>
-      </header>
 
-      {/* Main panel */}
-      <main className="main">
-        <div className="decoder-card">
-          <div className="card-label">// DECODE TRANSACTION</div>
-
-          <div className="input-row">
-            <ChainSelector
-              chain={chain}
-              onChange={(c) => {
-                setChain(c);
-                setHash("");
-                setResult(null);
-                setError(null);
-              }}
-            />
-            <HashInput
-              hash={hash}
-              onChange={setHash}
-              onSubmit={handleDecode}
-              loading={loading}
-            />
+        {/* Page links */}
+        <div className="nav-links">
+          {NAV_ITEMS.map(item => (
             <button
-              className={`decode-btn ${loading ? "loading" : ""} ${decoded ? "success" : ""}`}
-              onClick={handleDecode}
-              disabled={loading || !hash.trim()}
+              key={item.id}
+              className={`nav-link${page === item.id ? ' active' : ''}`}
+              onClick={() => setPage(item.id)}
             >
-              {loading ? (
-                <span className="spinner" />
-              ) : decoded ? (
-                "✓ DECODED"
-              ) : (
-                "DECODE →"
-              )}
+              <span className="nav-link-icon">{item.icon}</span>
+              {item.label}
+              {item.tag && <span className="nav-link-new">{item.tag}</span>}
             </button>
-          </div>
+          ))}
+        </div>
 
-          {/* Sample transactions */}
-          <div className="samples">
-            <span className="samples-label">Try sample:</span>
-            {SAMPLE_TRANSACTIONS[chain]?.map((s) => (
-              <button
-                key={s.hash}
-                className="sample-btn"
-                onClick={() => handleSample(s)}
+        {/* Right: status + chain pills */}
+        <div className="nav-right">
+          <div className="nav-status">
+            <span className="status-dot" />
+            API LIVE
+          </div>
+          <div className="nav-chain-pills">
+            {CHAIN_PILLS.map(p => (
+              <span
+                key={p.label}
+                className="nav-pill"
+                style={{ background: p.bg, color: p.color, border: `1px solid ${p.border}` }}
               >
-                {s.label}
-              </button>
+                {p.label}
+              </span>
             ))}
           </div>
         </div>
+      </nav>
 
-        {/* Output area */}
-        <div className={`output-area ${result ? "has-result" : ""} ${error ? "has-error" : ""}`}>
-          {!result && !error && !loading && (
-            <div className="placeholder">
-              <div className="placeholder-icon">◈</div>
-              <p>
-                Enter a transaction hash above to decode it into
-                <br />a unified, chain-agnostic JSON format.
-              </p>
-              <div className="placeholder-chains">
-                <span>ethereum://Transfer(address,address,uint256)</span>
-                <span className="arrow">↓</span>
-                <span className="unified">
-                  {'{ type: "token_transfer", from, to, amount }'}
-                </span>
-                <span>solana://SPL.TransferChecked</span>
-                <span className="arrow">↓</span>
-                <span className="unified">
-                  {'{ type: "token_transfer", from, to, amount }'}
-                </span>
-              </div>
-            </div>
-          )}
+      {/* ── Page ── */}
+      <div key={page} className="page-wrap">
+        {page === 'decoder'    && <DecoderPage />}
+        {page === 'chainview'  && <ChainViewPage />}
+        {page === 'chainindex' && <ChainIndexPage />}
+        {page === 'docs'       && <DocsPage />}
+      </div>
 
-          {loading && (
-            <div className="loading-state">
-              <div className="loading-bars">
-                {[...Array(8)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="bar"
-                    style={{ animationDelay: `${i * 0.1}s` }}
-                  />
-                ))}
-              </div>
-              <p>Fetching from {chain} RPC and decoding...</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="error-box">
-              <span className="error-icon">✗</span>
-              <div>
-                <div className="error-title">Decode Failed</div>
-                <div className="error-msg">{error}</div>
-              </div>
-            </div>
-          )}
-
-          {result && <OutputViewer data={result} />}
-        </div>
-      </main>
-
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer className="footer">
-        <span>ChainCodec Lite v0.1.0</span>
+        <span>ChainMerge v0.1.0</span>
         <span className="sep">·</span>
         <span>Rust + Node.js + React</span>
         <span className="sep">·</span>
-        <span>Hackathon Edition</span>
+        <span style={{ color: 'var(--green)' }}>ETH · SOL · COSMOS · APT</span>
+        <span className="sep">·</span>
+        <span>Hackathon Demo</span>
       </footer>
     </div>
   );
