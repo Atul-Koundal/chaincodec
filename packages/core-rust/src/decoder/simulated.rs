@@ -73,6 +73,26 @@ impl Decoder for SimulatedDecoder {
                     amount: "1000000000000000000".to_string(), // 1 STRK
                 })
             ],
+            "cosmos" => vec![
+                Event::NativeTransfer(NativeTransferEvent {
+                    from:   "cosmos1yw6g44c4pqd2rxgrcqekxg9k8f4fd8xpab8qs2".to_string(),
+                    to:     "cosmos1grgelyng2v6v3t8z87wu3sxgt9m5s03xfytvz7".to_string(),
+                    amount: "5000000".to_string(),
+                    symbol: "ATOM".to_string(),
+                })
+            ],
+            "aptos" => vec![
+                Event::TokenTransfer(TokenTransferEvent {
+                    token: TokenInfo {
+                        address: "0x1::aptos_coin::AptosCoin".to_string(),
+                        symbol:   Some("APT".to_string()),
+                        decimals: 8,
+                    },
+                    from:   "0x9f3a1b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a".to_string(),
+                    to:     "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b".to_string(),
+                    amount: "250000000".to_string(),
+                })
+            ],
             _ => vec![
                 Event::Unknown(UnknownEvent {
                     raw: tx_hash.to_string(),

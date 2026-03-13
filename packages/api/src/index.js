@@ -8,9 +8,8 @@ const PORT     = process.env.API_PORT || 3000;
 const RUST_URL = `http://localhost:${process.env.RUST_SERVER_PORT || 3001}`;
 
 // ─── Live chains (real decoders in Rust) ─────────────────────────────────────
-const LIVE_CHAINS      = ['ethereum', 'solana', 'cosmos', 'aptos'];
-// ─── Simulated chains (simulated.rs handles these) ───────────────────────────
-const SIMULATED_CHAINS = ['sui', 'polkadot', 'bitcoin', 'starknet'];
+const LIVE_CHAINS      = ['ethereum', 'solana'];
+const SIMULATED_CHAINS = ['cosmos', 'aptos', 'sui', 'polkadot', 'bitcoin', 'starknet'];
 const ALL_CHAINS       = [...LIVE_CHAINS, ...SIMULATED_CHAINS];
 
 app.use(cors());
