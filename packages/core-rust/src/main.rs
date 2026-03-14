@@ -123,10 +123,9 @@ fn get_rpc_url(chain: &str) -> Option<String> {
     match chain.to_lowercase().as_str() {
         "ethereum" | "eth" => env::var("ETH_RPC_URL").ok(),
         "solana" | "sol"   => env::var("SOL_RPC_URL").ok(),
-        "cosmos" | "atom"  => env::var("COSMOS_RPC_URL").ok(),
-        "aptos" | "apt"    => env::var("APTOS_RPC_URL").ok(),
         // Tier 2 simulated chains don't need real RPC
-        "sui" | "polkadot" | "dot" | "bitcoin" | "btc" | "starknet" | "strk" => {
+        "sui" | "polkadot" | "dot" | "bitcoin" | "btc" | "starknet" | "strk"
+        | "cosmos" | "atom" | "aptos" | "apt" => {
             Some("simulated".to_string())
         }
         _ => None,

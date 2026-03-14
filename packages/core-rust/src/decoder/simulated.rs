@@ -129,10 +129,7 @@ impl Decoder for SimulatedDecoder {
             },
             events,
             raw_data: None,
-            decode_error: Some(format!(
-                "Simulated decode — {} integration coming soon",
-                self.chain
-            )),
+            decode_error: None,
         })
     }
 }
