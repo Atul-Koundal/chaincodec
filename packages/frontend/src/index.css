@@ -714,3 +714,148 @@ body {
 .support-encoding   { font-size: 10px; color: var(--text3); }
 .support-badge-live { font-size: 9px; padding: 2px 6px; background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.3); color: var(--green); border-radius: 2px; }
 .support-badge-sim  { font-size: 9px; padding: 2px 6px; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25); color: var(--yellow); border-radius: 2px; }
+
+/* ── Paste these at the bottom of your existing index.css ── */
+
+/* ChainIndex stat pill */
+.index-stat-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg3);
+  font-size: 11px; color: var(--text2); font-family: var(--font);
+  letter-spacing: 1px;
+}
+.clear-btn {
+  padding: 5px 12px; border-radius: 4px; font-size: 10px;
+  font-family: var(--font); font-weight: 700; letter-spacing: 1px;
+  border: 1px solid rgba(248,113,113,0.3); background: rgba(248,113,113,0.06);
+  color: #f87171; cursor: pointer; transition: all 0.15s;
+}
+.clear-btn:hover { background: rgba(248,113,113,0.12); }
+
+/* Cache result card */
+.cache-result-card {
+  border-radius: 6px; border: 1px solid; padding: 14px 16px;
+}
+.cr-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.cr-badge {
+  font-size: 10px; font-family: var(--font); font-weight: 700;
+  letter-spacing: 1px; padding: 3px 10px; border-radius: 3px;
+}
+.cr-chain { font-size: 12px; font-weight: 600; font-family: var(--font); }
+.cr-status { font-size: 11px; margin-left: auto; }
+.cr-fields { display: flex; flex-direction: column; gap: 5px; }
+.cr-row { display: flex; gap: 12px; font-size: 11px; }
+.cr-k { color: var(--text3); width: 52px; flex-shrink: 0; font-family: var(--font); letter-spacing: 1px; }
+.cr-v { color: var(--text); font-family: var(--font); }
+
+/* Cache table */
+.cache-table { width: 100%; }
+.ct-head {
+  display: grid; grid-template-columns: 80px 1fr 1fr 1fr 60px 80px 80px;
+  padding: 8px 16px; font-size: 9px; color: var(--text3);
+  letter-spacing: 1.5px; border-bottom: 1px solid var(--border);
+  font-family: var(--font); font-weight: 700;
+}
+.ct-row {
+  display: grid; grid-template-columns: 80px 1fr 1fr 1fr 60px 80px 80px;
+  padding: 9px 16px; font-size: 11px; font-family: var(--font);
+  border-bottom: 1px solid var(--bg3); color: var(--text2);
+  transition: background 0.1s;
+}
+/* ChainView has one extra column (to) */
+.cache-table.wide .ct-head,
+.cache-table.wide .ct-row {
+  grid-template-columns: 70px 1fr 1fr 1fr 50px 70px 70px;
+}
+.ct-row:hover { background: var(--bg3); }
+.ct-row.clickable { cursor: pointer; }
+.ct-row.selected { background: rgba(96,165,250,0.06); border-left: 2px solid var(--blue); }
+.ct-hash { color: var(--text3); font-family: var(--font); font-size: 10px; }
+.ct-addr { color: var(--text3); font-family: var(--font); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-expanded {
+  padding: 0 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.res-raw {
+  font-family: var(--font); font-size: 10px; color: var(--text3);
+  white-space: pre-wrap; word-break: break-all;
+  max-height: 220px; overflow-y: auto; line-height: 1.7;
+  padding: 10px; background: var(--bg2); border-radius: 4px;
+  border: 1px solid var(--border); margin-top: 8px;
+}
+
+/* Roadmap callout */
+.roadmap-callout {
+  background: rgba(0,229,160,0.03);
+  border: 1px solid rgba(0,229,160,0.1);
+  border-radius: 6px; padding: 16px 20px;
+}
+.roadmap-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 11px; font-family: var(--font);
+}
+.done-tag {
+  margin-left: auto; font-size: 9px; color: var(--green);
+  letter-spacing: 1px; font-family: var(--font);
+}
+
+/* ChainView SQL display */
+.sql-display {
+  font-family: var(--font); font-size: 12px; color: var(--green);
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 12px 16px; margin-bottom: 10px;
+  white-space: pre; line-height: 1.8; letter-spacing: 0.5px;
+}
+
+/* Filters */
+.filter-grid {
+  display: flex; flex-direction: column; gap: 14px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 7px; }
+.filter-label {
+  font-size: 9px; color: var(--text3); letter-spacing: 2px;
+  font-family: var(--font); font-weight: 700; text-transform: uppercase;
+}
+.filter-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.filter-pill {
+  padding: 4px 11px; border-radius: 3px; font-size: 10px;
+  font-family: var(--font); font-weight: 700; letter-spacing: 1px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text3); cursor: pointer; transition: all 0.12s;
+}
+.filter-pill:hover { border-color: var(--text3); color: var(--text2); }
+.filter-pill.on { font-weight: 700; }
+
+/* Preset row */
+.preset-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+/* ChainView stats */
+.cv-stats {
+  display: flex; gap: 0; border-top: 1px solid var(--border);
+}
+.cv-stat {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 12px 8px;
+  border-right: 1px solid var(--border);
+}
+.cv-stat:last-child { border-right: none; }
+.cv-stat .stat-val { font-size: 18px; font-weight: 700; color: var(--text); font-family: var(--font); }
+.cv-stat .stat-key { font-size: 9px; color: var(--text3); letter-spacing: 1.5px; font-family: var(--font); }
+
+/* index empty */
+.index-empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 40px 20px; color: var(--text3); text-align: center;
+}
+.index-empty-icon { font-size: 28px; opacity: 0.3; margin-bottom: 4px; }
+.index-empty p    { font-size: 13px; color: var(--text2); }
+.index-empty span { font-size: 11px; }

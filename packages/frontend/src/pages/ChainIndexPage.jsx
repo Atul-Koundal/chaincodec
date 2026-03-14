@@ -1,304 +1,262 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react'
+import { getFromCache, saveToCache, getAllCached, getCacheSize, clearCache } from '../cache'
 
 const CHAINS = [
-  { value: 'ethereum', label: 'ETH', icon: '⬡', color: '#60a5fa' },
-  { value: 'solana',   label: 'SOL', icon: '◎', color: '#a78bfa' },
-  { value: 'cosmos',   label: 'ATM', icon: '✦', color: '#34d399' },
-  { value: 'aptos',    label: 'APT', icon: '◆', color: '#f59e0b' },
-];
+  { value: 'ethereum', label: 'ETH',  icon: '⬡', color: '#60a5fa' },
+  { value: 'solana',   label: 'SOL',  icon: '◎', color: '#a78bfa' },
+  { value: 'cosmos',   label: 'ATOM', icon: '✦', color: '#34d399' },
+  { value: 'aptos',    label: 'APT',  icon: '◆', color: '#f59e0b' },
+  { value: 'sui',      label: 'SUI',  icon: '◉', color: '#38bdf8' },
+  { value: 'polkadot', label: 'DOT',  icon: '⬤', color: '#e879f9' },
+  { value: 'bitcoin',  label: 'BTC',  icon: '₿', color: '#fbbf24' },
+  { value: 'starknet', label: 'STRK', icon: '★', color: '#fb923c' },
+]
 
-// Simulated events that trickle in for demo
-const SIMULATED_EVENTS = [
-  { type: 'token_transfer',  color: '#4ade80', title: 'Token Transfer',  meta: 'USDC · 1,200.00',   hash: '0x9e621f…8a9' },
-  { type: 'native_transfer', color: '#60a5fa', title: 'Native Transfer', meta: 'ETH · 0.42',        hash: '0x5c504e…060' },
-  { type: 'contract_call',   color: '#f59e0b', title: 'Contract Call',   meta: 'Uniswap V3 · swap', hash: '0xa9059c…49b' },
-  { type: 'token_transfer',  color: '#4ade80', title: 'Token Transfer',  meta: 'WBTC · 0.005',      hash: '0x3fc821…cc2' },
-  { type: 'native_transfer', color: '#60a5fa', title: 'Native Transfer', meta: 'SOL · 12.5',        hash: '5ZvGTs…JY4' },
-  { type: 'contract_call',   color: '#f59e0b', title: 'Contract Call',   meta: 'Raydium · addLiq',  hash: '3pZdZD…8d' },
-];
-
-function now() {
-  return new Date().toLocaleTimeString('en-US', { hour12: false });
+const SAMPLE_HASHES = {
+  ethereum: '0x9e621f6080ff42ab706d6a5adcdd08fadbc6ed25bf78b26757bddc2cc1d6a8a9',
+  solana:   '5ZvGTsHXtMaGGpJeUUqQcGi6ZvEVcxH7vZoKFbnDuJYFtCaKDeSKmAg2qB1CZcK',
+  cosmos:   'A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2',
+  aptos:    '0xa1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+  sui:      '0xsui1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcd',
+  polkadot: '0xdot1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcd',
+  bitcoin:  'btc1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcd',
+  starknet: '0xstrk1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
 }
-function shortAddr(a) {
-  if (!a || a.length <= 12) return a || '—';
-  return `${a.slice(0,8)}…${a.slice(-6)}`;
+
+function shortHash(h) {
+  if (!h || h.length <= 14) return h
+  return `${h.slice(0, 8)}…${h.slice(-6)}`
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000)
+  if (s < 60)   return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  return `${Math.floor(s / 3600)}h ago`
 }
 
 export default function ChainIndexPage() {
-  const [watchInput, setWatchInput]   = useState('');
-  const [watchChain, setWatchChain]   = useState('ethereum');
-  const [watched,    setWatched]      = useState([]);
-  const [events,     setEvents]       = useState([]);
-  const [isIndexing, setIsIndexing]   = useState(false);
-  const intervalRef = useRef(null);
-  const evtIdxRef   = useRef(0);
+  const [chain,      setChain]      = useState('ethereum')
+  const [hash,       setHash]       = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [lastResult, setLastResult] = useState(null) // { tx, fromCache }
+  const [error,      setError]      = useState(null)
+  const [cached,     setCached]     = useState([])
+  const [tick,       setTick]       = useState(0)
 
-  // Start/stop the live indexing simulation
+  // Refresh cache list every second for live time display
   useEffect(() => {
-    if (isIndexing && watched.length > 0) {
-      intervalRef.current = setInterval(() => {
-        const tmpl  = SIMULATED_EVENTS[evtIdxRef.current % SIMULATED_EVENTS.length];
-        const w     = watched[Math.floor(Math.random() * watched.length)];
-        evtIdxRef.current++;
-        const newEvt = {
-          id:      Date.now(),
-          time:    now(),
-          wallet:  w.address,
-          chain:   w.chain,
-          ...tmpl,
-        };
-        setEvents(prev => [newEvt, ...prev].slice(0, 50));
-        setWatched(prev => prev.map(p =>
-          p.address === w.address ? { ...p, count: p.count + 1 } : p
-        ));
-      }, 2200);
+    const iv = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(iv)
+  }, [])
+
+  useEffect(() => {
+    setCached(getAllCached())
+  }, [tick, lastResult])
+
+  const chainMeta = c => CHAINS.find(x => x.value === c) || { label: c, icon: '◈', color: '#6b8099' }
+
+  async function handleDecode() {
+    const h = hash.trim()
+    if (!h) return
+    setError(null)
+    setLastResult(null)
+
+    // ── Check cache first ──────────────────────────────────────
+    const cached = getFromCache(chain, h)
+    if (cached) {
+      setLastResult({ tx: cached, fromCache: true })
+      return
     }
-    return () => clearInterval(intervalRef.current);
-  }, [isIndexing, watched.length]);
 
-  const handleAddWatch = () => {
-    const addr = watchInput.trim();
-    if (!addr) return;
-    if (watched.find(w => w.address === addr && w.chain === watchChain)) return;
-    setWatched(prev => [...prev, { address: addr, chain: watchChain, count: 0 }]);
-    setWatchInput('');
-  };
+    // ── Cache miss — fetch from API ────────────────────────────
+    setLoading(true)
+    try {
+      const res  = await fetch(`/api/decode?chain=${chain}&hash=${encodeURIComponent(h)}`)
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Decode failed'); return }
+      saveToCache(chain, h, data)
+      setLastResult({ tx: data, fromCache: false })
+    } catch (e) {
+      setError('Could not reach ChainMerge API. Is it running on :3000?')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const handleUnwatch = (address, chain) => {
-    setWatched(prev => prev.filter(w => !(w.address===address && w.chain===chain)));
-  };
+  function handleClear() {
+    clearCache()
+    setLastResult(null)
+    setCached([])
+  }
 
-  const handleToggleIndex = () => {
-    if (watched.length === 0) return;
-    setIsIndexing(v => !v);
-  };
-
-  const totalEvents   = watched.reduce((s,w) => s + w.count, 0);
-  const chainCounts   = watched.reduce((acc,w) => { acc[w.chain] = (acc[w.chain]||0)+1; return acc; }, {});
+  const cm = chainMeta(chain)
 
   return (
     <>
       <div className="page-header">
         <div className="page-title-group">
           <h1 className="page-title">Chain<span>Index</span></h1>
-          <p className="page-sub">Watch wallets across chains · get real-time normalized events</p>
+          <p className="page-sub">Decoded transactions are cached · same hash never hits RPC twice</p>
         </div>
-        <button
-          className={`watch-btn${isIndexing?' stop':''}`}
-          style={{ height: 38, fontSize: 11 }}
-          onClick={handleToggleIndex}
-          disabled={watched.length === 0}
-        >
-          {isIndexing
-            ? <><span className="live-dot" /> STOP INDEXING</>
-            : <><span>⊛</span> START INDEXING</>}
-        </button>
-      </div>
-
-      {/* Stats row */}
-      <div className="index-stats-row" style={{ marginBottom: 16 }}>
-        <div className="stat-item">
-          <span className="stat-val">{watched.length}</span>
-          <span className="stat-key">WATCHING</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-val" style={{ color: isIndexing ? 'var(--green)' : 'var(--text3)' }}>
-            {isIndexing ? 'LIVE' : 'IDLE'}
-          </span>
-          <span className="stat-key">STATUS</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-val">{totalEvents}</span>
-          <span className="stat-key">EVENTS CAUGHT</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-val">{Object.keys(chainCounts).length || '—'}</span>
-          <span className="stat-key">CHAINS</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-val" style={{ color: 'var(--green)', fontSize: 10 }}>@chainmerge/sdk</span>
-          <span className="stat-key">POWERED BY</span>
-        </div>
-      </div>
-
-      <div className="index-layout">
-        {/* Left: watch list */}
-        <div className="index-panel">
-          <div className="index-panel-title">// WATCHED WALLETS</div>
-
-          {/* Add wallet */}
-          <div>
-            <div style={{ display:'flex', gap:6, marginBottom:8 }}>
-              {CHAINS.map(c => (
-                <button
-                  key={c.value}
-                  onClick={() => setWatchChain(c.value)}
-                  style={{
-                    padding: '4px 10px', fontSize: 10, fontFamily: 'var(--font)',
-                    fontWeight: 700, letterSpacing: '1px', borderRadius: 3, cursor: 'pointer',
-                    background: watchChain===c.value
-                      ? `color-mix(in srgb, ${c.color} 15%, transparent)`
-                      : 'var(--bg3)',
-                    border: `1px solid ${watchChain===c.value ? c.color : 'var(--border)'}`,
-                    color: watchChain===c.value ? c.color : 'var(--text3)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {c.icon} {c.label}
-                </button>
-              ))}
-            </div>
-            <div className="watch-input-row">
-              <input
-                className="watch-input"
-                placeholder="0x… wallet address"
-                value={watchInput}
-                onChange={e => setWatchInput(e.target.value)}
-                onKeyDown={e => e.key==='Enter' && handleAddWatch()}
-              />
-              <button className="watch-btn" onClick={handleAddWatch} disabled={!watchInput.trim()}>
-                WATCH +
-              </button>
-            </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="index-stat-pill">
+            <span style={{ color: 'var(--green)' }}>⊛</span>
+            <span>{getCacheSize()} cached</span>
           </div>
-
-          {/* Demo quick-add */}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:-4 }}>
-            <span style={{ fontSize:10, color:'var(--text3)', letterSpacing:1, alignSelf:'center' }}>DEMO:</span>
-            {[
-              { label:'Vitalik', chain:'ethereum', address:'0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' },
-              { label:'SOL Whale', chain:'solana', address:'SolDemoWallet111111111111111111111111111111' },
-              { label:'Cosmos', chain:'cosmos', address:'cosmos1demo1234567890abcdef' },
-            ].map(w => (
-              <button key={w.address} className="demo-btn"
-                onClick={() => {
-                  if (!watched.find(x=>x.address===w.address)) {
-                    setWatched(prev => [...prev, { address:w.address, chain:w.chain, count:0 }]);
-                  }
-                }}>
-                {w.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Watched list */}
-          {watched.length === 0 ? (
-            <div className="index-empty">
-              <div className="index-empty-icon">⊛</div>
-              <p>Add wallet addresses to watch</p>
-            </div>
-          ) : (
-            <div className="watched-list">
-              {watched.map(w => {
-                const chainMeta = CHAINS.find(c=>c.value===w.chain);
-                return (
-                  <div key={`${w.chain}:${w.address}`} className="watched-item">
-                    <span style={{ fontSize:13, color: chainMeta?.color||'var(--text3)', flexShrink:0 }}>
-                      {chainMeta?.icon}
-                    </span>
-                    <span className="watched-addr" title={w.address}>{shortAddr(w.address)}</span>
-                    <span className="watched-count">{w.count} events</span>
-                    {isIndexing && (
-                      <span className="watched-live">
-                        <span className="live-dot" /> LIVE
-                      </span>
-                    )}
-                    <button className="unwatch-btn" onClick={() => handleUnwatch(w.address, w.chain)}>✕</button>
-                  </div>
-                );
-              })}
-            </div>
+          {getCacheSize() > 0 && (
+            <button className="clear-btn" onClick={handleClear}>CLEAR CACHE</button>
           )}
+        </div>
+      </div>
 
-          {/* SDK snippet */}
-          <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize:10, color:'var(--text3)', letterSpacing:2, marginBottom:8 }}>// SDK USAGE</div>
-            <div style={{
-              background:'var(--bg3)', border:'1px solid var(--border)',
-              borderRadius:4, padding:'12px 14px', fontSize:11, lineHeight:1.8,
-            }}>
-              <span style={{color:'var(--purple)'}}>await</span>{' index.'}
-              <span style={{color:'var(--blue)'}}>watchWallet</span>{'('}<br/>
-              {'  '}<span style={{color:'var(--green)'}}>'{watchChain}'</span>{','}<br/>
-              {'  '}<span style={{color:'var(--green)'}}>'{watchInput||'0x...'}'</span><br/>
-              {')'}
-            </div>
-          </div>
+      {/* ── Decode + cache input ── */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-label">// DECODE & CACHE TRANSACTION</div>
+
+        {/* Chain picker */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {CHAINS.map(c => (
+            <button key={c.value}
+              onClick={() => { setChain(c.value); setHash(''); setError(null); setLastResult(null) }}
+              style={{
+                padding: '4px 11px', fontSize: 10, fontFamily: 'var(--font)',
+                fontWeight: 700, letterSpacing: '1px', borderRadius: 3, cursor: 'pointer',
+                background: chain === c.value ? `color-mix(in srgb, ${c.color} 15%, transparent)` : 'var(--bg3)',
+                border: `1px solid ${chain === c.value ? c.color : 'var(--border)'}`,
+                color: chain === c.value ? c.color : 'var(--text3)',
+                transition: 'all 0.15s',
+              }}>
+              {c.icon} {c.label}
+            </button>
+          ))}
         </div>
 
-        {/* Right: event log */}
-        <div className="index-panel">
-          <div className="index-panel-title" style={{ display:'flex', alignItems:'center', gap:10 }}>
-            // LIVE EVENT LOG
-            {isIndexing && (
-              <span className="watched-live" style={{ marginLeft:'auto' }}>
-                <span className="live-dot" /> INDEXING
-              </span>
+        <div className="input-row">
+          <div className="address-wrap" style={{ flex: 1 }}>
+            <span className="address-prefix" style={{ color: cm.color }}>{cm.icon} HASH//</span>
+            <input className="address-input" value={hash}
+              onChange={e => { setHash(e.target.value); setError(null) }}
+              onKeyDown={e => e.key === 'Enter' && handleDecode()}
+              placeholder="paste transaction hash…" spellCheck={false} />
+            {hash && <button className="address-clear" onClick={() => setHash('')}>×</button>}
+          </div>
+          <button className={`decode-btn${loading ? ' loading' : ''}`}
+            onClick={handleDecode} disabled={loading || !hash.trim()}>
+            {loading ? <><span className="spinner" /> FETCHING…</> : 'DECODE + CACHE →'}
+          </button>
+        </div>
+
+        <div className="samples">
+          <span className="samples-label">Sample:</span>
+          <button className="sample-btn" onClick={() => setHash(SAMPLE_HASHES[chain] || '')}>
+            {chain} tx
+          </button>
+        </div>
+      </div>
+
+      {/* ── Result ── */}
+      {error && (
+        <div className="error-box" style={{ marginBottom: 14 }}>
+          <span className="error-icon">✗</span>
+          <div><div className="error-title">Error</div><div className="error-msg">{error}</div></div>
+        </div>
+      )}
+
+      {lastResult && (
+        <div className="cache-result-card" style={{ marginBottom: 14,
+          borderColor: lastResult.fromCache ? 'rgba(251,191,36,0.3)' : 'rgba(74,222,128,0.3)',
+          background:  lastResult.fromCache ? 'rgba(251,191,36,0.04)' : 'rgba(74,222,128,0.04)',
+        }}>
+          <div className="cr-header">
+            <span className="cr-badge" style={{
+              color:   lastResult.fromCache ? '#fbbf24' : '#4ade80',
+              background: lastResult.fromCache ? 'rgba(251,191,36,0.1)' : 'rgba(74,222,128,0.1)',
+              border: `1px solid ${lastResult.fromCache ? 'rgba(251,191,36,0.25)' : 'rgba(74,222,128,0.25)'}`,
+            }}>
+              {lastResult.fromCache ? '⚡ CACHE HIT — no RPC call made' : '✓ FETCHED + SAVED TO CACHE'}
+            </span>
+            <span className="cr-chain" style={{ color: chainMeta(lastResult.tx.chain).color }}>
+              {chainMeta(lastResult.tx.chain).icon} {lastResult.tx.chain}
+            </span>
+            <span className={'cr-status status-' + lastResult.tx.status}>{lastResult.tx.status}</span>
+          </div>
+          <div className="cr-fields">
+            <div className="cr-row"><span className="cr-k">hash</span>    <span className="cr-v">{shortHash(lastResult.tx.tx_hash)}</span></div>
+            <div className="cr-row"><span className="cr-k">from</span>    <span className="cr-v">{shortHash(lastResult.tx.sender)}</span></div>
+            <div className="cr-row"><span className="cr-k">to</span>      <span className="cr-v">{shortHash(lastResult.tx.receiver)}</span></div>
+            <div className="cr-row"><span className="cr-k">events</span>  <span className="cr-v">{lastResult.tx.events?.length || 0} decoded</span></div>
+            <div className="cr-row"><span className="cr-k">fee</span>     <span className="cr-v">{lastResult.tx.fee?.amount} {lastResult.tx.fee?.symbol}</span></div>
+            {lastResult.fromCache && lastResult.tx._cached_at && (
+              <div className="cr-row"><span className="cr-k">cached</span><span className="cr-v" style={{ color: '#fbbf24' }}>{timeAgo(lastResult.tx._cached_at)}</span></div>
             )}
           </div>
-
-          {events.length === 0 ? (
-            <div className="no-logs">
-              <div className="no-logs-icon">◈</div>
-              <p>
-                {watched.length === 0
-                  ? 'Add wallets to watch, then start indexing.'
-                  : 'Press "START INDEXING" to begin catching events.'}
-              </p>
-            </div>
-          ) : (
-            <div className="event-log">
-              {events.map(evt => (
-                <div
-                  key={evt.id}
-                  className="log-entry"
-                  style={{ '--log-color': evt.color }}
-                >
-                  <span className="log-time">{evt.time}</span>
-                  <div className="log-body">
-                    <span className="log-title">{evt.title}</span>
-                    <span className="log-meta">
-                      {evt.meta} · {CHAINS.find(c=>c.value===evt.chain)?.icon} {evt.chain}
-                    </span>
-                    <span className="log-hash">{evt.hash} · {shortAddr(evt.wallet)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+      )}
+
+      {/* ── Cache table ── */}
+      <div className="card">
+        <div className="card-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>// CACHED TRANSACTIONS ({cached.length})</span>
+          <span style={{ color: 'var(--text3)', fontSize: 10 }}>
+            stored in memory · persists until page reload
+          </span>
+        </div>
+
+        {cached.length === 0 ? (
+          <div className="index-empty">
+            <div className="index-empty-icon">⊛</div>
+            <p>No transactions cached yet.</p>
+            <span>Decode a transaction above and it will appear here.</span>
+          </div>
+        ) : (
+          <div className="cache-table">
+            <div className="ct-head">
+              <span>CHAIN</span>
+              <span>HASH</span>
+              <span>FROM</span>
+              <span>EVENTS</span>
+              <span>STATUS</span>
+              <span>CACHED</span>
+            </div>
+            {cached.map((tx, i) => {
+              const cm = chainMeta(tx.chain)
+              return (
+                <div key={i} className="ct-row">
+                  <span style={{ color: cm.color, fontWeight: 600 }}>{cm.icon} {cm.label}</span>
+                  <span className="ct-hash">{shortHash(tx.tx_hash)}</span>
+                  <span className="ct-addr">{shortHash(tx.sender)}</span>
+                  <span>{tx.events?.length || 0}</span>
+                  <span className={'status-' + tx.status}>{tx.status}</span>
+                  <span style={{ color: 'var(--text3)' }}>{timeAgo(tx._cached_at)}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* What chainindex will do — roadmap callout */}
-      <div style={{
-        marginTop: 16,
-        background:'rgba(0,229,160,0.03)', border:'1px solid rgba(0,229,160,0.1)',
-        borderRadius:6, padding:'16px 20px',
-        display:'flex', flexDirection:'column', gap:10,
-      }}>
-        <div style={{ fontSize:10, color:'var(--text3)', letterSpacing:2 }}>// CHAININDEX ROADMAP</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10 }}>
+      {/* ── How it works callout ── */}
+      <div className="roadmap-callout" style={{ marginTop: 14 }}>
+        <div className="card-label">// HOW CHAININDEX WORKS</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px,1fr))', gap: 10, marginTop: 10 }}>
           {[
-            { icon:'◈', label:'watchWallet(chain, addr)', done:true },
-            { icon:'⊛', label:'Real-time event streaming',done:true },
-            { icon:'⬡', label:'Normalized event schema',  done:true },
-            { icon:'⇄', label:'Cross-chain wallet view',  done:false },
-            { icon:'📦', label:'Persistent event storage', done:false },
-            { icon:'🔔', label:'Webhook notifications',    done:false },
+            { icon: '⬡', label: 'decode(chain, hash) called',         done: true  },
+            { icon: '⊛', label: 'Check cache before RPC',              done: true  },
+            { icon: '⚡', label: 'Cache hit → instant return',         done: true  },
+            { icon: '🌐', label: 'Cache miss → fetch + store',         done: true  },
+            { icon: '📦', label: 'Persistent storage (IndexedDB)',      done: false },
+            { icon: '🔔', label: 'Webhook on new tx',                   done: false },
           ].map(f => (
-            <div key={f.label} style={{
-              display:'flex', alignItems:'center', gap:10,
-              padding:'8px 12px', background:'var(--bg3)',
-              border:'1px solid var(--border)', borderRadius:4, fontSize:11,
-            }}>
-              <span style={{ color: f.done?'var(--green)':'var(--text3)' }}>{f.done?'✓':f.icon}</span>
-              <span style={{ color: f.done?'var(--text)':'var(--text3)' }}>{f.label}</span>
-              {f.done && <span style={{ marginLeft:'auto', fontSize:9, color:'var(--green)', letterSpacing:1 }}>DONE</span>}
+            <div key={f.label} className="roadmap-item"
+              style={{ opacity: f.done ? 1 : 0.45 }}>
+              <span style={{ color: f.done ? 'var(--green)' : 'var(--text3)' }}>{f.done ? '✓' : f.icon}</span>
+              <span style={{ color: f.done ? 'var(--text)' : 'var(--text3)' }}>{f.label}</span>
+              {f.done && <span className="done-tag">DONE</span>}
             </div>
           ))}
         </div>
       </div>
     </>
-  );
+  )
 }

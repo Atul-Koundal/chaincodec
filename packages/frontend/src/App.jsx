@@ -32,7 +32,7 @@ export default function App() {
         <div className="nav-brand">
           <span className="nav-logo-icon">⬡</span>
           <span className="nav-logo-text">
-            Chain<span className="nav-logo-accent">Codec</span>
+            Chain<span className="nav-logo-accent">Merge</span>
           </span>
           <span className="nav-logo-badge">BETA</span>
         </div>
